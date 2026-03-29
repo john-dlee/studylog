@@ -17,7 +17,7 @@ public class Subject {
     @Column(name="name", nullable=false)
     private String name;
 
-    public getId() {
+    public Long getId() {
         return id;
     }
 
@@ -25,7 +25,7 @@ public class Subject {
         this.id = id;
     }
 
-    public getName() {
+    public String getName() {
         this.name = name;
     }
 
