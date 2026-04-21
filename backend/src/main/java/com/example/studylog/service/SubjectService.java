@@ -1,7 +1,11 @@
 package com.example.studylog.service;
 
 import com.example.studylog.domain.Subject;
+import com.example.studylog.domain.User;
+import com.example.studylog.dto.SubjectRequest;
+import com.example.studylog.dto.SubjectResponse;
 import com.example.studylog.repository.SubjectRepository;
+import com.example.studylog.repository.UserRepository;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -10,33 +14,60 @@ import java.util.Optional;
 @Service
 public class SubjectService {
     private final SubjectRepository subjectRepository;
+    private final UserRepository userRepository;
 
-    public SubjectService(SubjectRepository subjectRepository) {
+    public SubjectService(SubjectRepository subjectRepository, UserRepository userRepository) {
         this.subjectRepository = subjectRepository;
+        this.userRepository = userRepository;
     }
 
-    public Subject createSubject(Subject subject) {
-        return subjectRepository.save(subject);
+    // Once authentication is added, stop passing userId
+    public SubjectResponse createSubject(SubjectRequest subjectRequest, Long id) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        Subject subject = new Subject();
+        subject.setName(subjectRequest.getName());
+        subject.setUser(user);
+
+        Subject savedSubject = subjectRepository.save(subject);
+
+        return toResponse(subject);
     }
 
-    public List<Subject> getAll(Long userId) {
-        return subjectRepository.findByUserId(userId);
+    public List<SubjectResponse> getAll(Long userId) {
+        return subjectRepository.findByUserId(userId)
+                .stream()
+                .map(this::toResponse)
+                .toList();
     }
 
-    public Optional<Subject> getSubject(Long id) {
-        return subjectRepository.findById(id);
-    }
-
-    public Subject updateSubject(Long id, String newName) {
+    public SubjectResponse getSubject(Long id) {
         Subject subject = subjectRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Subject not found"));
+
+        return toResponse(subject);
+    }
+
+    public SubjectResponse updateSubject(Long id, String newName) {
+        Subject subject = subjectRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Subject not found"));
+
         subject.setName(newName);
-        return subjectRepository.save(subject);
+        subjectRepository.save(subject);
+
+        return toResponse(subject);
     }
 
     public void deleteSubject(Long id) {
         Subject subject = subjectRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Subject not found"));
         subjectRepository.delete(subject);
+    }
+
+    private SubjectResponse toResponse(Subject subject) {
+        SubjectResponse response = new SubjectResponse();
+        response.setName(subject.getName());
+        return response;
     }
 }

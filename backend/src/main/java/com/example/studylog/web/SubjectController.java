@@ -1,18 +1,50 @@
 package com.example.studylog.web;
 
+import com.example.studylog.domain.Subject;
+import com.example.studylog.dto.SubjectRequest;
+import com.example.studylog.dto.SubjectResponse;
+import com.example.studylog.repository.SubjectRepository;
+import com.example.studylog.service.SubjectService;
+import org.apache.coyote.Response;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.ArrayList;
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/subjects")
 public class SubjectController {
-    private List<Subject> subjects = new ArrayList<>();
+    private final SubjectService subjectService;
+
+    public SubjectController(SubjectService subjectService) {
+        this.subjectService= subjectService;
+    }
 
     @PostMapping
-    public Subject createSubject(@RequestBody Subject subject) {
-        subjects.add(subject);
-        return subject;
+    public ResponseEntity<SubjectResponse> createSubject(@RequestBody SubjectRequest subjectRequest, @RequestParam Long userId) {
+        SubjectResponse response = subjectService.createSubject(subjectRequest, userId);
+        return ResponseEntity.status(201).body(response);
     }
 
     @GetMapping
-    public List<Subject> getSubjects() {
-        return subjects;
+    public ResponseEntity<List<SubjectResponse>> getAll(@RequestParam Long userId) {
+        return ResponseEntity.ok(subjectService.getAll(userId));
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<SubjectResponse> getSubject(@PathVariable Long id) {
+        return ResponseEntity.ok(subjectService.getSubject(id));
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<SubjectResponse> updateSubject(@PathVariable Long id, @RequestParam String newName) {
+        return ResponseEntity.ok(subjectService.updateSubject(id, newName));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteSubject(@PathVariable Long id) {
+        subjectService.deleteSubject(id);
+        return ResponseEntity.noContent().build();
     }
 }
