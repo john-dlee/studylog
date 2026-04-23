@@ -4,6 +4,8 @@ import com.example.studylog.domain.Subject;
 import com.example.studylog.domain.User;
 import com.example.studylog.dto.SubjectRequest;
 import com.example.studylog.dto.SubjectResponse;
+import com.example.studylog.exception.SubjectNotFoundException;
+import com.example.studylog.exception.UserNotFoundException;
 import com.example.studylog.repository.SubjectRepository;
 import com.example.studylog.repository.UserRepository;
 import org.springframework.stereotype.Service;
@@ -24,7 +26,7 @@ public class SubjectService {
     // Once authentication is added, stop passing userId
     public SubjectResponse createSubject(SubjectRequest subjectRequest, Long id) {
         User user = userRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new UserNotFoundException("User not found"));
 
         Subject subject = new Subject();
         subject.setName(subjectRequest.getName());
@@ -44,14 +46,14 @@ public class SubjectService {
 
     public SubjectResponse getSubject(Long id) {
         Subject subject = subjectRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Subject not found"));
+                .orElseThrow(() -> new SubjectNotFoundException("Subject not found"));
 
         return toResponse(subject);
     }
 
     public SubjectResponse updateSubject(Long id, String newName) {
         Subject subject = subjectRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Subject not found"));
+                .orElseThrow(() -> new SubjectNotFoundException("Subject not found"));
 
         subject.setName(newName);
         subjectRepository.save(subject);
@@ -61,7 +63,7 @@ public class SubjectService {
 
     public void deleteSubject(Long id) {
         Subject subject = subjectRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Subject not found"));
+                .orElseThrow(() -> new SubjectNotFoundException("Subject not found"));
         subjectRepository.delete(subject);
     }
 
