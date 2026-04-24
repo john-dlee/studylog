@@ -31,7 +31,6 @@ public class StudySession {
     @Column(nullable=false)
     private SessionType sessionType;
 
-
     private Integer plannedDurationMinutes;
 
     public void setId(Long id) {
