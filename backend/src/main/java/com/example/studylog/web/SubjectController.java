@@ -1,15 +1,12 @@
 package com.example.studylog.web;
 
-import com.example.studylog.domain.Subject;
 import com.example.studylog.dto.SubjectRequest;
 import com.example.studylog.dto.SubjectResponse;
-import com.example.studylog.repository.SubjectRepository;
 import com.example.studylog.service.SubjectService;
-import org.apache.coyote.Response;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.ArrayList;
 import java.util.List;
 
 @RestController
@@ -22,7 +19,7 @@ public class SubjectController {
     }
 
     @PostMapping
-    public ResponseEntity<SubjectResponse> createSubject(@RequestBody SubjectRequest subjectRequest, @RequestParam Long userId) {
+    public ResponseEntity<SubjectResponse> createSubject(@Valid @RequestBody SubjectRequest subjectRequest, @RequestParam Long userId) {
         SubjectResponse response = subjectService.createSubject(subjectRequest, userId);
         return ResponseEntity.status(201).body(response);
     }

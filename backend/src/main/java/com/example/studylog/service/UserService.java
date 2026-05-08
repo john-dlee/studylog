@@ -3,6 +3,7 @@ package com.example.studylog.service;
 import com.example.studylog.domain.User;
 import com.example.studylog.dto.RegisterRequest;
 import com.example.studylog.dto.RegisterResponse;
+import com.example.studylog.exception.UserAlreadyExistsException;
 import com.example.studylog.repository.UserRepository;
 import org.springframework.stereotype.Service;
 
@@ -15,12 +16,17 @@ public class UserService {
     }
 
     public RegisterResponse register(RegisterRequest request) {
+        if (userRepository.existsByEmail(request.getEmail())) {
+            throw new UserAlreadyExistsException("Email is already taken");
+        }
+
         User user = new User();
         user.setUsername(request.getUsername());
         user.setEmail(request.getEmail());
         user.setPassword(request.getPassword());
 
         User savedUser = userRepository.save(user);
+
         return new RegisterResponse(
                 savedUser.getId(),
                 savedUser.getUsername(),
