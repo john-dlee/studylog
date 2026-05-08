@@ -4,6 +4,7 @@ import com.example.studylog.domain.Subject;
 import com.example.studylog.domain.User;
 import com.example.studylog.dto.SubjectRequest;
 import com.example.studylog.dto.SubjectResponse;
+import com.example.studylog.exception.SubjectAlreadyExistsException;
 import com.example.studylog.exception.SubjectNotFoundException;
 import com.example.studylog.exception.UserNotFoundException;
 import com.example.studylog.repository.SubjectRepository;
@@ -27,6 +28,10 @@ public class SubjectService {
     public SubjectResponse createSubject(SubjectRequest subjectRequest, Long id) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new UserNotFoundException("User not found"));
+
+        if (subjectRepository.existsByNameAndUserId(subjectRequest.getName(), id)) {
+            throw new SubjectAlreadyExistsException(subjectRequest.getName() + " exists already");
+        }
 
         Subject subject = new Subject();
         subject.setName(subjectRequest.getName());
@@ -70,6 +75,7 @@ public class SubjectService {
     private SubjectResponse toResponse(Subject subject) {
         SubjectResponse response = new SubjectResponse();
         response.setName(subject.getName());
+        response.setId(subject.getId());
         return response;
     }
 }
