@@ -1,6 +1,5 @@
 package com.example.studylog.exception;
 
-import com.example.studylog.domain.User;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -23,9 +22,11 @@ public class GlobalExceptionHandler {
         return problemDetail;
     }
 
-    @ExceptionHandler(UserAlreadyExistsException.class)
+    @ExceptionHandler({UserAlreadyExistsException.class, SubjectAlreadyExistsException.class})
     public ProblemDetail handleAlreadyExists(RuntimeException ex) {
-        return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
+        ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
+        problemDetail.setTitle("Conflict");
+        return problemDetail;
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

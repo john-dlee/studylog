@@ -37,10 +37,17 @@ public class UserServiceTest {
     @Test
     void shouldRegisterUserSuccessfully() {
         when(userRepository.existsByEmail("alice@example.com")).thenReturn(false);
-        when(userRepository.save(any(User.class))).thenReturn(new User("alice", "alice@example.com", "password123"));
+        when(userRepository.save(any(User.class))).thenAnswer(invocation -> {
+            User u = invocation.getArgument(0);
+            u.setId(99L);
+            return u;
+        });
+
         RegisterResponse result = userService.register(request);
 
+        assertEquals(99L, result.getId());
         assertEquals("alice", result.getUsername());
+        assertEquals("alice@example.com", result.getEmail());
         verify(userRepository).save(any(User.class));
     }
 
