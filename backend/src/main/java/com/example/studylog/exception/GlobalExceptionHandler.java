@@ -11,7 +11,7 @@ import java.util.Map;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
-    @ExceptionHandler({UserNotFoundException.class, SubjectNotFoundException.class})
+    @ExceptionHandler({UserNotFoundException.class, SubjectNotFoundException.class, StudySessionNotFoundException.class})
     public ProblemDetail handleUserNotFound(RuntimeException ex) {
         ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(
                 HttpStatus.NOT_FOUND,

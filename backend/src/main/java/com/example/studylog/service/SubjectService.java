@@ -16,6 +16,7 @@ import java.util.Optional;
 
 @Service
 public class SubjectService {
+    
     private final SubjectRepository subjectRepository;
     private final UserRepository userRepository;
 

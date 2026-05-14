@@ -12,6 +12,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/subjects")
 public class SubjectController {
+
     private final SubjectService subjectService;
 
     public SubjectController(SubjectService subjectService) {
@@ -19,7 +20,9 @@ public class SubjectController {
     }
 
     @PostMapping
-    public ResponseEntity<SubjectResponse> createSubject(@Valid @RequestBody SubjectRequest subjectRequest, @RequestParam Long userId) {
+    public ResponseEntity<SubjectResponse> createSubject(
+            @Valid @RequestBody SubjectRequest subjectRequest, 
+            @RequestParam Long userId) {
         SubjectResponse response = subjectService.createSubject(subjectRequest, userId);
         return ResponseEntity.status(201).body(response);
     }

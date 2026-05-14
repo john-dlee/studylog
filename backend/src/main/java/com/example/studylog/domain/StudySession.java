@@ -23,6 +23,10 @@ public class StudySession {
     @Column(nullable=false)
     private LocalDateTime endedAt;
 
+    @ManyToOne
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user;
+
     @ManyToOne(optional=true)
     @JoinColumn(name="subject_id", nullable=true)
     private Subject subject;
@@ -56,6 +60,9 @@ public class StudySession {
     public void setPlannedDurationMinutes(Integer plannedDurationMinutes) {
         this.plannedDurationMinutes = plannedDurationMinutes;
     }
+    public void setUser(User user) {
+        this.user = user;
+    }
 
     public Long getId() {
         return id;
@@ -80,4 +87,8 @@ public class StudySession {
     public Integer getPlannedDurationMinutes() {
         return plannedDurationMinutes;
     }   
+
+    public User getUser() {
+        return user;
+    }
 }
