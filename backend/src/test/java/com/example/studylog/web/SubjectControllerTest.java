@@ -5,11 +5,15 @@ import com.example.studylog.dto.SubjectResponse;
 import com.example.studylog.exception.GlobalExceptionHandler;
 import com.example.studylog.exception.SubjectAlreadyExistsException;
 import com.example.studylog.exception.SubjectNotFoundException;
+import com.example.studylog.security.CurrentUser;
 import com.example.studylog.service.SubjectService;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -30,6 +34,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(SubjectController.class)
+@AutoConfigureMockMvc(addFilters = false)
+@ActiveProfiles("web-slice-test")
 @Import(GlobalExceptionHandler.class)
 public class SubjectControllerTest {
 
@@ -39,8 +45,16 @@ public class SubjectControllerTest {
     @MockitoBean
     private SubjectService subjectService;
 
+    @MockitoBean
+    private CurrentUser currentUser;
+
     @Autowired
     private ObjectMapper objectMapper;
+
+    @BeforeEach
+    void setUp() {
+        when(currentUser.getUserId()).thenReturn(1L);
+    }
 
     @Test
     void shouldReturn400WhenNameIsBlank() throws Exception {
@@ -48,7 +62,6 @@ public class SubjectControllerTest {
         request.setName("");
 
         mockMvc.perform(post("/api/subjects")
-                        .param("userId", "1")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest());
@@ -66,7 +79,6 @@ public class SubjectControllerTest {
         when(subjectService.createSubject(any(SubjectRequest.class), eq(1L))).thenReturn(response);
 
         mockMvc.perform(post("/api/subjects")
-                        .param("userId", "1")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated())
@@ -83,7 +95,6 @@ public class SubjectControllerTest {
                 .thenThrow(new SubjectAlreadyExistsException("English exists already"));
 
         mockMvc.perform(post("/api/subjects")
-                        .param("userId", "1")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isConflict())
@@ -95,9 +106,9 @@ public class SubjectControllerTest {
         SubjectResponse r = new SubjectResponse();
         r.setId(1L);
         r.setName("Math");
-        when(subjectService.getAll(2L)).thenReturn(List.of(r));
+        when(subjectService.getAll(1L)).thenReturn(List.of(r));
 
-        mockMvc.perform(get("/api/subjects").param("userId", "2"))
+        mockMvc.perform(get("/api/subjects"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].id").value(1))
                 .andExpect(jsonPath("$[0].name").value("Math"));
@@ -108,7 +119,7 @@ public class SubjectControllerTest {
         SubjectResponse r = new SubjectResponse();
         r.setId(5L);
         r.setName("Physics");
-        when(subjectService.getSubject(5L)).thenReturn(r);
+        when(subjectService.getSubject(5L, 1L)).thenReturn(r);
 
         mockMvc.perform(get("/api/subjects/5"))
                 .andExpect(status().isOk())
@@ -118,7 +129,7 @@ public class SubjectControllerTest {
 
     @Test
     void shouldReturn404WhenGetByIdNotFound() throws Exception {
-        when(subjectService.getSubject(5L)).thenThrow(new SubjectNotFoundException("Subject not found"));
+        when(subjectService.getSubject(5L, 1L)).thenThrow(new SubjectNotFoundException("Subject not found"));
 
         mockMvc.perform(get("/api/subjects/5"))
                 .andExpect(status().isNotFound())
@@ -130,7 +141,7 @@ public class SubjectControllerTest {
         SubjectResponse r = new SubjectResponse();
         r.setId(3L);
         r.setName("NewName");
-        when(subjectService.updateSubject(3L, "NewName")).thenReturn(r);
+        when(subjectService.updateSubject(3L, 1L, "NewName")).thenReturn(r);
 
         mockMvc.perform(put("/api/subjects/3").param("newName", "NewName"))
                 .andExpect(status().isOk())
@@ -139,7 +150,7 @@ public class SubjectControllerTest {
 
     @Test
     void shouldReturn404WhenUpdateNotFound() throws Exception {
-        when(subjectService.updateSubject(3L, "X")).thenThrow(new SubjectNotFoundException("Subject not found"));
+        when(subjectService.updateSubject(3L, 1L, "X")).thenThrow(new SubjectNotFoundException("Subject not found"));
 
         mockMvc.perform(put("/api/subjects/3").param("newName", "X"))
                 .andExpect(status().isNotFound());
@@ -147,7 +158,7 @@ public class SubjectControllerTest {
 
     @Test
     void shouldReturn204WhenDelete() throws Exception {
-        doNothing().when(subjectService).deleteSubject(7L);
+        doNothing().when(subjectService).deleteSubject(7L, 1L);
 
         mockMvc.perform(delete("/api/subjects/7"))
                 .andExpect(status().isNoContent());
@@ -155,7 +166,7 @@ public class SubjectControllerTest {
 
     @Test
     void shouldReturn404WhenDeleteNotFound() throws Exception {
-        doThrow(new SubjectNotFoundException("Subject not found")).when(subjectService).deleteSubject(7L);
+        doThrow(new SubjectNotFoundException("Subject not found")).when(subjectService).deleteSubject(7L, 1L);
 
         mockMvc.perform(delete("/api/subjects/7"))
                 .andExpect(status().isNotFound());

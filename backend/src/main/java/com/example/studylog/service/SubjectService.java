@@ -12,11 +12,10 @@ import com.example.studylog.repository.UserRepository;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-import java.util.Optional;
 
 @Service
 public class SubjectService {
-    
+
     private final SubjectRepository subjectRepository;
     private final UserRepository userRepository;
 
@@ -25,12 +24,11 @@ public class SubjectService {
         this.userRepository = userRepository;
     }
 
-    // Once authentication is added, stop passing userId
-    public SubjectResponse createSubject(SubjectRequest subjectRequest, Long id) {
-        User user = userRepository.findById(id)
+    public SubjectResponse createSubject(SubjectRequest subjectRequest, Long userId) {
+        User user = userRepository.findById(userId)
                 .orElseThrow(() -> new UserNotFoundException("User not found"));
 
-        if (subjectRepository.existsByNameAndUserId(subjectRequest.getName(), id)) {
+        if (subjectRepository.existsByNameAndUserId(subjectRequest.getName(), userId)) {
             throw new SubjectAlreadyExistsException(subjectRequest.getName() + " exists already");
         }
 
@@ -40,7 +38,7 @@ public class SubjectService {
 
         Subject savedSubject = subjectRepository.save(subject);
 
-        return toResponse(subject);
+        return toResponse(savedSubject);
     }
 
     public List<SubjectResponse> getAll(Long userId) {
@@ -50,15 +48,15 @@ public class SubjectService {
                 .toList();
     }
 
-    public SubjectResponse getSubject(Long id) {
-        Subject subject = subjectRepository.findById(id)
+    public SubjectResponse getSubject(Long id, Long userId) {
+        Subject subject = subjectRepository.findByIdAndUser_Id(id, userId)
                 .orElseThrow(() -> new SubjectNotFoundException("Subject not found"));
 
         return toResponse(subject);
     }
 
-    public SubjectResponse updateSubject(Long id, String newName) {
-        Subject subject = subjectRepository.findById(id)
+    public SubjectResponse updateSubject(Long id, Long userId, String newName) {
+        Subject subject = subjectRepository.findByIdAndUser_Id(id, userId)
                 .orElseThrow(() -> new SubjectNotFoundException("Subject not found"));
 
         subject.setName(newName);
@@ -67,8 +65,8 @@ public class SubjectService {
         return toResponse(subject);
     }
 
-    public void deleteSubject(Long id) {
-        Subject subject = subjectRepository.findById(id)
+    public void deleteSubject(Long id, Long userId) {
+        Subject subject = subjectRepository.findByIdAndUser_Id(id, userId)
                 .orElseThrow(() -> new SubjectNotFoundException("Subject not found"));
         subjectRepository.delete(subject);
     }

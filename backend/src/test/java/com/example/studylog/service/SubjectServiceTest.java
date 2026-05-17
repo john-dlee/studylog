@@ -120,9 +120,9 @@ public class SubjectServiceTest {
         subject.setId(5L);
         subject.setName("Physics");
 
-        when(subjectRepository.findById(5L)).thenReturn(Optional.of(subject));
+        when(subjectRepository.findByIdAndUser_Id(5L, 1L)).thenReturn(Optional.of(subject));
 
-        SubjectResponse result = subjectService.getSubject(5L);
+        SubjectResponse result = subjectService.getSubject(5L, 1L);
 
         assertEquals("Physics", result.getName());
         assertEquals(5L, result.getId());
@@ -130,9 +130,9 @@ public class SubjectServiceTest {
 
     @Test
     void shouldFailGetSubjectWhenNotFound() {
-        when(subjectRepository.findById(5L)).thenReturn(Optional.empty());
+        when(subjectRepository.findByIdAndUser_Id(5L, 1L)).thenReturn(Optional.empty());
 
-        assertThrows(SubjectNotFoundException.class, () -> subjectService.getSubject(5L));
+        assertThrows(SubjectNotFoundException.class, () -> subjectService.getSubject(5L, 1L));
     }
 
     @Test
@@ -141,10 +141,10 @@ public class SubjectServiceTest {
         subject.setId(3L);
         subject.setName("Old");
 
-        when(subjectRepository.findById(3L)).thenReturn(Optional.of(subject));
+        when(subjectRepository.findByIdAndUser_Id(3L, 1L)).thenReturn(Optional.of(subject));
         when(subjectRepository.save(subject)).thenReturn(subject);
 
-        SubjectResponse result = subjectService.updateSubject(3L, "New");
+        SubjectResponse result = subjectService.updateSubject(3L, 1L, "New");
 
         assertEquals("New", result.getName());
         assertEquals(3L, result.getId());
@@ -153,9 +153,9 @@ public class SubjectServiceTest {
 
     @Test
     void shouldFailUpdateSubjectWhenNotFound() {
-        when(subjectRepository.findById(3L)).thenReturn(Optional.empty());
+        when(subjectRepository.findByIdAndUser_Id(3L, 1L)).thenReturn(Optional.empty());
 
-        assertThrows(SubjectNotFoundException.class, () -> subjectService.updateSubject(3L, "New"));
+        assertThrows(SubjectNotFoundException.class, () -> subjectService.updateSubject(3L, 1L, "New"));
     }
 
     @Test
@@ -163,17 +163,17 @@ public class SubjectServiceTest {
         Subject subject = new Subject();
         subject.setId(7L);
 
-        when(subjectRepository.findById(7L)).thenReturn(Optional.of(subject));
+        when(subjectRepository.findByIdAndUser_Id(7L, 1L)).thenReturn(Optional.of(subject));
 
-        subjectService.deleteSubject(7L);
+        subjectService.deleteSubject(7L, 1L);
 
         verify(subjectRepository).delete(subject);
     }
 
     @Test
     void shouldFailDeleteSubjectWhenNotFound() {
-        when(subjectRepository.findById(7L)).thenReturn(Optional.empty());
+        when(subjectRepository.findByIdAndUser_Id(7L, 1L)).thenReturn(Optional.empty());
 
-        assertThrows(SubjectNotFoundException.class, () -> subjectService.deleteSubject(7L));
+        assertThrows(SubjectNotFoundException.class, () -> subjectService.deleteSubject(7L, 1L));
     }
 }

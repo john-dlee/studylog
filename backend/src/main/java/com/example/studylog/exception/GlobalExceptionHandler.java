@@ -22,6 +22,13 @@ public class GlobalExceptionHandler {
         return problemDetail;
     }
 
+    @ExceptionHandler(InvalidCredentialsException.class)
+    public ProblemDetail handleInvalidCredentials(InvalidCredentialsException ex) {
+        ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(HttpStatus.UNAUTHORIZED, ex.getMessage());
+        problemDetail.setTitle("Unauthorized");
+        return problemDetail;
+    }
+
     @ExceptionHandler({UserAlreadyExistsException.class, SubjectAlreadyExistsException.class})
     public ProblemDetail handleAlreadyExists(RuntimeException ex) {
         ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());

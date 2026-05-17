@@ -5,11 +5,15 @@ import com.example.studylog.dto.StudySessionRequest;
 import com.example.studylog.dto.StudySessionResponse;
 import com.example.studylog.exception.GlobalExceptionHandler;
 import com.example.studylog.exception.StudySessionNotFoundException;
+import com.example.studylog.security.CurrentUser;
 import com.example.studylog.service.StudySessionService;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -31,6 +35,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(StudySessionController.class)
+@AutoConfigureMockMvc(addFilters = false)
+@ActiveProfiles("web-slice-test")
 @Import(GlobalExceptionHandler.class)
 class StudySessionControllerTest {
 
@@ -40,8 +46,16 @@ class StudySessionControllerTest {
     @MockitoBean
     private StudySessionService studySessionService;
 
+    @MockitoBean
+    private CurrentUser currentUser;
+
     @Autowired
     private ObjectMapper objectMapper;
+
+    @BeforeEach
+    void setUp() {
+        when(currentUser.getUserId()).thenReturn(1L);
+    }
 
     @Test
     void postReturns400WhenSessionTypeMissing() throws Exception {
@@ -50,7 +64,6 @@ class StudySessionControllerTest {
         request.setEndedAt(LocalDateTime.parse("2026-01-10T09:30:00"));
 
         mockMvc.perform(post("/api/study-sessions")
-                        .param("userId", "1")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest());
@@ -64,7 +77,6 @@ class StudySessionControllerTest {
         request.setSessionType(SessionType.POMODORO);
 
         mockMvc.perform(post("/api/study-sessions")
-                        .param("userId", "1")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest());
@@ -86,7 +98,6 @@ class StudySessionControllerTest {
         when(studySessionService.create(any(StudySessionRequest.class), eq(1L))).thenReturn(response);
 
         mockMvc.perform(post("/api/study-sessions")
-                        .param("userId", "1")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated())
@@ -98,9 +109,9 @@ class StudySessionControllerTest {
         StudySessionResponse row = new StudySessionResponse();
         row.setId(1L);
         row.setSessionType(SessionType.STOPWATCH);
-        when(studySessionService.listForUser(2L)).thenReturn(List.of(row));
+        when(studySessionService.listForUser(1L)).thenReturn(List.of(row));
 
-        mockMvc.perform(get("/api/study-sessions").param("userId", "2"))
+        mockMvc.perform(get("/api/study-sessions"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].id").value(1));
     }
@@ -109,7 +120,7 @@ class StudySessionControllerTest {
     void getByIdReturns404() throws Exception {
         when(studySessionService.get(5L, 1L)).thenThrow(new StudySessionNotFoundException("Study session not found"));
 
-        mockMvc.perform(get("/api/study-sessions/5").param("userId", "1"))
+        mockMvc.perform(get("/api/study-sessions/5"))
                 .andExpect(status().isNotFound());
     }
 
@@ -124,7 +135,6 @@ class StudySessionControllerTest {
                 .thenThrow(new StudySessionNotFoundException("Study session not found"));
 
         mockMvc.perform(put("/api/study-sessions/3")
-                        .param("userId", "1")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isNotFound());
@@ -134,7 +144,7 @@ class StudySessionControllerTest {
     void deleteReturns204() throws Exception {
         doNothing().when(studySessionService).delete(7L, 1L);
 
-        mockMvc.perform(delete("/api/study-sessions/7").param("userId", "1"))
+        mockMvc.perform(delete("/api/study-sessions/7"))
                 .andExpect(status().isNoContent());
     }
 
@@ -143,7 +153,7 @@ class StudySessionControllerTest {
         doThrow(new StudySessionNotFoundException("Study session not found"))
                 .when(studySessionService).delete(7L, 1L);
 
-        mockMvc.perform(delete("/api/study-sessions/7").param("userId", "1"))
+        mockMvc.perform(delete("/api/study-sessions/7"))
                 .andExpect(status().isNotFound());
     }
 }
