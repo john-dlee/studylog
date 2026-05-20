@@ -1,35 +1,40 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useTheme } from '../context/ThemeContext'
 
-export default function Register() {
-  const { register, login } = useAuth()
+function toResetPath(resetLink) {
+  try {
+    const url = new URL(resetLink)
+    return `${url.pathname}${url.search}`
+  } catch {
+    return resetLink
+  }
+}
+
+export default function ForgotPassword() {
+  const { forgotPassword } = useAuth()
   const { isDark, toggleTheme } = useTheme()
-  const navigate = useNavigate()
-  const [username, setUsername] = useState('')
   const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
   const [error, setError] = useState('')
+  const [message, setMessage] = useState('')
+  const [resetLink, setResetLink] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
   async function handleSubmit(event) {
     event.preventDefault()
     setError('')
+    setMessage('')
+    setResetLink('')
     setSubmitting(true)
     try {
-      await register(username, email, password)
+      const data = await forgotPassword(email)
+      setMessage(data.message)
+      if (data.resetLink) {
+        setResetLink(data.resetLink)
+      }
     } catch (err) {
-      setError(err.message || 'Registration failed')
-      setSubmitting(false)
-      return
-    }
-
-    try {
-      await login(email, password)
-      navigate('/')
-    } catch (err) {
-      setError(err.message || 'Account created but login failed. Try logging in.')
+      setError(err.message || 'Could not start password reset')
     } finally {
       setSubmitting(false)
     }
@@ -59,18 +64,11 @@ export default function Register() {
           </span>
           <span className="dash-brand-text">Studylog</span>
         </div>
-        <h1>Register</h1>
+        <h1>Reset password</h1>
+        <p className="auth-lead">
+          Enter your email. If an account exists, we will email you a reset link.
+        </p>
         <form onSubmit={handleSubmit} className="auth-form">
-          <label>
-            Username
-            <input
-              type="text"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              required
-              autoComplete="username"
-            />
-          </label>
           <label>
             Email
             <input
@@ -81,23 +79,20 @@ export default function Register() {
               autoComplete="email"
             />
           </label>
-          <label>
-            Password
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              autoComplete="new-password"
-            />
-          </label>
           {error && <p className="form-error">{error}</p>}
+          {message && <p className="auth-success">{message}</p>}
+          {resetLink && (
+            <p className="auth-dev-link">
+              Email is not configured — use this reset link:{' '}
+              <Link to={toResetPath(resetLink)}>{toResetPath(resetLink)}</Link>
+            </p>
+          )}
           <button type="submit" className="btn-primary" disabled={submitting}>
-            {submitting ? 'Creating account...' : 'Register'}
+            {submitting ? 'Sending...' : 'Send reset link'}
           </button>
         </form>
         <p className="auth-footer">
-          Already have an account? <Link to="/login">Log in</Link>
+          <Link to="/login">Back to log in</Link>
         </p>
       </div>
     </div>

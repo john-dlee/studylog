@@ -1,9 +1,12 @@
 package com.example.studylog.web;
 
+import com.example.studylog.dto.ForgotPasswordRequest;
+import com.example.studylog.dto.ForgotPasswordResponse;
 import com.example.studylog.dto.LoginRequest;
 import com.example.studylog.dto.LoginResponse;
 import com.example.studylog.dto.RegisterRequest;
 import com.example.studylog.dto.RegisterResponse;
+import com.example.studylog.dto.ResetPasswordRequest;
 import com.example.studylog.service.UserService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
@@ -32,5 +35,17 @@ public class UserController {
     public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
         LoginResponse response = userService.login(request);
         return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/forgot-password")
+    public ResponseEntity<ForgotPasswordResponse> forgotPassword(
+            @Valid @RequestBody ForgotPasswordRequest request) {
+        return ResponseEntity.ok(userService.forgotPassword(request));
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<Void> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
+        userService.resetPassword(request);
+        return ResponseEntity.noContent().build();
     }
 }

@@ -1,35 +1,45 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useTheme } from '../context/ThemeContext'
 
-export default function Register() {
-  const { register, login } = useAuth()
+export default function ResetPassword() {
+  const { resetPassword } = useAuth()
   const { isDark, toggleTheme } = useTheme()
   const navigate = useNavigate()
-  const [username, setUsername] = useState('')
-  const [email, setEmail] = useState('')
+  const [searchParams] = useSearchParams()
+  const tokenFromUrl = searchParams.get('token') ?? ''
+
   const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
   async function handleSubmit(event) {
     event.preventDefault()
     setError('')
-    setSubmitting(true)
-    try {
-      await register(username, email, password)
-    } catch (err) {
-      setError(err.message || 'Registration failed')
-      setSubmitting(false)
+
+    if (!tokenFromUrl) {
+      setError('Reset link is missing or invalid.')
       return
     }
 
+    if (password.length < 8) {
+      setError('Password must be at least 8 characters.')
+      return
+    }
+
+    if (password !== confirmPassword) {
+      setError('Passwords do not match.')
+      return
+    }
+
+    setSubmitting(true)
     try {
-      await login(email, password)
-      navigate('/')
+      await resetPassword(tokenFromUrl, password)
+      navigate('/login', { replace: true, state: { resetSuccess: true } })
     } catch (err) {
-      setError(err.message || 'Account created but login failed. Try logging in.')
+      setError(err.message || 'Could not reset password')
     } finally {
       setSubmitting(false)
     }
@@ -59,45 +69,37 @@ export default function Register() {
           </span>
           <span className="dash-brand-text">Studylog</span>
         </div>
-        <h1>Register</h1>
+        <h1>Choose a new password</h1>
         <form onSubmit={handleSubmit} className="auth-form">
           <label>
-            Username
-            <input
-              type="text"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              required
-              autoComplete="username"
-            />
-          </label>
-          <label>
-            Email
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              autoComplete="email"
-            />
-          </label>
-          <label>
-            Password
+            New password
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
+              minLength={8}
+              autoComplete="new-password"
+            />
+          </label>
+          <label>
+            Confirm password
+            <input
+              type="password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              required
+              minLength={8}
               autoComplete="new-password"
             />
           </label>
           {error && <p className="form-error">{error}</p>}
-          <button type="submit" className="btn-primary" disabled={submitting}>
-            {submitting ? 'Creating account...' : 'Register'}
+          <button type="submit" className="btn-primary" disabled={submitting || !tokenFromUrl}>
+            {submitting ? 'Saving...' : 'Update password'}
           </button>
         </form>
         <p className="auth-footer">
-          Already have an account? <Link to="/login">Log in</Link>
+          <Link to="/login">Back to log in</Link>
         </p>
       </div>
     </div>

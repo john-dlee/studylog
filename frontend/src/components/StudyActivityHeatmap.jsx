@@ -1,41 +1,73 @@
-const MONTHS = ['May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar', 'Apr', 'May']
-const LEVELS = ['level-0', 'level-1', 'level-2', 'level-3']
+import { Fragment, useMemo } from 'react'
+import { buildHeatmap, formatHeatmapTooltip } from '../utils/heatmapData'
 
-export default function StudyActivityHeatmap() {
-  const cells = Array.from({ length: 7 * 13 }, (_, i) => LEVELS[i % 4])
+const DAY_LABELS = ['', 'Mon', '', 'Wed', '', 'Fri', '']
+
+export default function StudyActivityHeatmap({ sessions = [] }) {
+  const { grid, monthLabels } = useMemo(() => buildHeatmap(sessions), [sessions])
+
+  const monthByCol = useMemo(() => {
+    const map = new Map(monthLabels.map(({ col, label }) => [col, label]))
+    return map
+  }, [monthLabels])
+
+  const weekCount = grid[0]?.length ?? 0
 
   return (
     <section className="card heatmap-card">
-      <h2 className="card-title">
-        <span className="title-icon">✨</span> Study Activity
-      </h2>
-      <div className="heatmap-wrap">
-        <div className="heatmap-months">
-          {MONTHS.map((m) => (
-            <span key={m}>{m}</span>
+      <h2 className="card-title contrib-title">Study activity in the last year</h2>
+
+      <div className="contrib-scroll">
+        <div
+          className="contrib-grid"
+          style={{ '--week-count': weekCount }}
+          role="grid"
+          aria-label="Study activity heatmap"
+        >
+          <div className="contrib-corner" role="presentation" />
+          {Array.from({ length: weekCount }, (_, col) => (
+            <div key={`m-${col}`} className="contrib-month" role="columnheader">
+              {monthByCol.get(col) ?? ''}
+            </div>
+          ))}
+
+          {grid.map((weekRow, row) => (
+            <Fragment key={row}>
+              <div className="contrib-day-label" role="rowheader">
+                {DAY_LABELS[row]}
+              </div>
+              {weekRow.map((cell) => {
+                const levelClass = cell.isFuture
+                  ? 'contrib-level-future'
+                  : `contrib-level-${cell.level}`
+                return (
+                  <div
+                    key={cellKey(cell.date)}
+                    role="gridcell"
+                    className={`contrib-cell ${levelClass}`}
+                    title={formatHeatmapTooltip(cell.date, cell.minutes)}
+                    tabIndex={0}
+                  />
+                )
+              })}
+            </Fragment>
           ))}
         </div>
-        <div className="heatmap-grid">
-          <div className="heatmap-days">
-            <span>Mon</span>
-            <span>Wed</span>
-            <span>Fri</span>
-          </div>
-          <div className="heatmap-cells">
-            {cells.map((level, i) => (
-              <span key={i} className={`heatmap-cell ${level}`} />
-            ))}
-          </div>
-        </div>
-        <div className="heatmap-legend">
+      </div>
+
+      <div className="contrib-footer">
+        <div className="contrib-legend" aria-hidden>
           <span>Less</span>
-          {LEVELS.map((l) => (
-            <span key={l} className={`heatmap-cell ${l}`} />
+          {[0, 1, 2, 3, 4].map((level) => (
+            <span key={level} className={`contrib-cell contrib-level-${level}`} />
           ))}
           <span>More</span>
         </div>
       </div>
-      <p className="placeholder-note">Activity heatmap — coming soon with real data</p>
     </section>
   )
+}
+
+function cellKey(date) {
+  return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`
 }

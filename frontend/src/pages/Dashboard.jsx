@@ -39,9 +39,9 @@ export default function Dashboard() {
         </div>
         <div className="dashboard-right">
           <StatsCards stats={stats} />
-          <StudyActivityHeatmap />
+          <StudyActivityHeatmap sessions={sessions} />
           <div className="dashboard-bottom-row">
-            <AnalyticsPanel />
+            <AnalyticsPanel sessions={sessions} />
             <RecentSessions sessions={sessions} loading={loading} />
           </div>
         </div>

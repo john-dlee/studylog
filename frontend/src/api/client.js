@@ -1,3 +1,5 @@
+import { loginErrorMessage, parseApiError } from './errors'
+
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? ''
 
 function getToken() {
@@ -10,18 +12,20 @@ export function clearAuth() {
 }
 
 export async function apiFetch(path, options = {}) {
+  const { skipAuth = false, ...fetchOptions } = options
+
   const headers = {
     'Content-Type': 'application/json',
-    ...options.headers,
+    ...fetchOptions.headers,
   }
 
-  const token = getToken()
+  const token = skipAuth ? null : getToken()
   if (token) {
     headers.Authorization = `Bearer ${token}`
   }
 
   const response = await fetch(`${API_BASE}${path}`, {
-    ...options,
+    ...fetchOptions,
     headers,
   })
 
@@ -29,31 +33,35 @@ export async function apiFetch(path, options = {}) {
     return null
   }
 
-  const contentType = response.headers.get('content-type')
-  const body = contentType?.includes('application/json')
-    ? await response.json()
-    : await response.text()
+  const rawText = await response.text()
+  const contentType = response.headers.get('content-type') ?? ''
+  let body = rawText
+
+  if (rawText && (contentType.includes('json') || rawText.trim().startsWith('{'))) {
+    try {
+      body = JSON.parse(rawText)
+    } catch {
+      body = rawText
+    }
+  }
 
   if (response.status === 401) {
+    const message = skipAuth
+      ? loginErrorMessage(body)
+      : parseApiError(body, 'Session expired. Please log in again.')
+
     if (token) {
       clearAuth()
       if (!window.location.pathname.startsWith('/login')) {
         window.location.href = '/login'
       }
     }
-    const message =
-      typeof body === 'object' && body?.detail ? body.detail : 'Unauthorized'
+
     throw new Error(message)
   }
 
   if (!response.ok) {
-    const message =
-      typeof body === 'object' && body?.detail
-        ? body.detail
-        : typeof body === 'object' && body?.title
-          ? body.title
-          : 'Request failed'
-    throw new Error(message)
+    throw new Error(parseApiError(body, 'Request failed'))
   }
 
   return body

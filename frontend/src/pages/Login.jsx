@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useTheme } from '../context/ThemeContext'
 
@@ -7,6 +7,8 @@ export default function Login() {
   const { login } = useAuth()
   const { isDark, toggleTheme } = useTheme()
   const navigate = useNavigate()
+  const location = useLocation()
+  const resetSuccess = location.state?.resetSuccess
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
@@ -51,6 +53,9 @@ export default function Login() {
           <span className="dash-brand-text">Studylog</span>
         </div>
         <h1>Log in</h1>
+        {resetSuccess && (
+          <p className="auth-success">Password updated. You can log in with your new password.</p>
+        )}
         <form onSubmit={handleSubmit} className="auth-form">
           <label>
             Email
@@ -72,6 +77,9 @@ export default function Login() {
               autoComplete="current-password"
             />
           </label>
+          <p className="auth-inline-link">
+            <Link to="/forgot-password">Forgot password?</Link>
+          </p>
           {error && <p className="form-error">{error}</p>}
           <button type="submit" className="btn-primary" disabled={submitting}>
             {submitting ? 'Logging in...' : 'Log in'}

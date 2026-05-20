@@ -14,6 +14,8 @@ const PHASE_LABELS = {
   longBreak: 'Long Break',
 }
 
+const TICK_MS = 250
+
 export function useStudyTimer({ onSessionSaved, subjectIdRef }) {
   const [timerMode, setTimerMode] = useState('pomodoro')
   const [phase, setPhase] = useState('work')
@@ -23,8 +25,11 @@ export function useStudyTimer({ onSessionSaved, subjectIdRef }) {
   const [sessionType, setSessionType] = useState('POMODORO')
 
   const sessionStartRef = useRef(null)
+  const endsAtRef = useRef(null)
+  const stopwatchBaseMsRef = useRef(0)
+  const stopwatchStartedAtRef = useRef(null)
   const tickRef = useRef(null)
-  const pendingZeroRef = useRef(false)
+  const handledZeroRef = useRef(false)
 
   const phaseDuration = useCallback(() => {
     if (timerMode === 'stopwatch') return 0
@@ -33,6 +38,7 @@ export function useStudyTimer({ onSessionSaved, subjectIdRef }) {
 
   const applyPhase = useCallback(
     (nextPhase, nextCycle) => {
+      handledZeroRef.current = false
       setPhase(nextPhase)
       setCycle(nextCycle)
       setSecondsLeft(
@@ -85,6 +91,9 @@ export function useStudyTimer({ onSessionSaved, subjectIdRef }) {
 
   const handleTimerZero = useCallback(
     async (subjectId) => {
+      if (handledZeroRef.current) return
+      handledZeroRef.current = true
+
       if (timerMode === 'pomodoro') {
         if (phase === 'work') {
           await saveSession(subjectId, Math.round(DEFAULTS.work / 60))
@@ -97,35 +106,67 @@ export function useStudyTimer({ onSessionSaved, subjectIdRef }) {
     [timerMode, phase, saveSession, advanceAfterWorkSaved, advanceAfterBreakEnded],
   )
 
+  const clearTick = useCallback(() => {
+    if (tickRef.current != null) {
+      clearInterval(tickRef.current)
+      tickRef.current = null
+    }
+  }, [])
+
+  const syncStopwatchElapsed = useCallback(() => {
+    const runningMs = stopwatchStartedAtRef.current
+      ? Date.now() - stopwatchStartedAtRef.current
+      : 0
+    const totalMs = stopwatchBaseMsRef.current + runningMs
+    setSecondsLeft(Math.floor(totalMs / 1000))
+  }, [])
+
+  const syncCountdownRemaining = useCallback(() => {
+    if (endsAtRef.current == null) return
+    const remainingMs = endsAtRef.current - Date.now()
+    const next = Math.max(0, Math.ceil(remainingMs / 1000))
+    setSecondsLeft(next)
+    return next
+  }, [])
 
   useEffect(() => {
-    if (status !== 'running') return undefined
+    if (status !== 'running') {
+      clearTick()
+      return undefined
+    }
 
-    tickRef.current = window.setInterval(() => {
-      setSecondsLeft((prev) => {
-        if (timerMode === 'stopwatch') return prev + 1
-        if (prev <= 1) {
-          clearInterval(tickRef.current)
-          pendingZeroRef.current = true
-          setStatus('idle')
-          return 0
-        }
-        return prev - 1
-      })
-    }, 1000)
+    const tick = () => {
+      if (timerMode === 'stopwatch') {
+        syncStopwatchElapsed()
+        return
+      }
 
-    return () => clearInterval(tickRef.current)
-  }, [status, timerMode])
+      const remaining = syncCountdownRemaining()
+      if (remaining <= 0) {
+        clearTick()
+        setStatus('idle')
+        const subjectId = subjectIdRef?.current ?? null
+        handleTimerZero(subjectId)
+      }
+    }
 
-  useEffect(() => {
-    if (!pendingZeroRef.current || status !== 'idle' || secondsLeft !== 0) return
-    pendingZeroRef.current = false
-    const subjectId = subjectIdRef?.current ?? null
-    handleTimerZero(subjectId)
-  }, [secondsLeft, status, handleTimerZero, subjectIdRef])
+    tick()
+    tickRef.current = window.setInterval(tick, TICK_MS)
+
+    return clearTick
+  }, [
+    status,
+    timerMode,
+    clearTick,
+    syncStopwatchElapsed,
+    syncCountdownRemaining,
+    handleTimerZero,
+    subjectIdRef,
+  ])
 
   const stopEarly = useCallback(
     async (subjectId) => {
+      clearTick()
       if (!sessionStartRef.current) {
         setStatus('idle')
         return
@@ -135,59 +176,119 @@ export function useStudyTimer({ onSessionSaved, subjectIdRef }) {
           ? Math.round(DEFAULTS.work / 60)
           : null
       await saveSession(subjectId, planned)
+      handledZeroRef.current = true
       if (timerMode === 'pomodoro' && phase === 'work') {
         advanceAfterWorkSaved()
       } else if (timerMode === 'stopwatch') {
+        stopwatchBaseMsRef.current = 0
+        stopwatchStartedAtRef.current = null
         setSecondsLeft(0)
         setStatus('idle')
       } else {
         advanceAfterBreakEnded()
       }
     },
-    [timerMode, phase, saveSession, advanceAfterWorkSaved, advanceAfterBreakEnded],
+    [
+      timerMode,
+      phase,
+      saveSession,
+      advanceAfterWorkSaved,
+      advanceAfterBreakEnded,
+      clearTick,
+    ],
   )
 
   const start = useCallback(() => {
     if (status === 'running') return
+
     const shouldTrack =
       timerMode === 'stopwatch' || (timerMode === 'pomodoro' && phase === 'work')
     if (!sessionStartRef.current && shouldTrack) {
       sessionStartRef.current = new Date()
     }
+
+    handledZeroRef.current = false
+
+    if (timerMode === 'stopwatch') {
+      stopwatchStartedAtRef.current = Date.now()
+    } else {
+      endsAtRef.current = Date.now() + secondsLeft * 1000
+    }
+
     setStatus('running')
-  }, [status, timerMode, phase])
+  }, [status, timerMode, phase, secondsLeft])
 
-  const pause = useCallback(() => setStatus('paused'), [])
+  const pause = useCallback(() => {
+    if (status !== 'running') return
 
-  const resume = useCallback(() => setStatus('running'), [])
+    clearTick()
+
+    if (timerMode === 'stopwatch') {
+      if (stopwatchStartedAtRef.current) {
+        stopwatchBaseMsRef.current += Date.now() - stopwatchStartedAtRef.current
+        stopwatchStartedAtRef.current = null
+      }
+      syncStopwatchElapsed()
+    } else {
+      syncCountdownRemaining()
+      endsAtRef.current = null
+    }
+
+    setStatus('paused')
+  }, [status, timerMode, clearTick, syncStopwatchElapsed, syncCountdownRemaining])
+
+  const resume = useCallback(() => {
+    if (status !== 'paused') return
+
+    handledZeroRef.current = false
+
+    if (timerMode === 'stopwatch') {
+      stopwatchStartedAtRef.current = Date.now()
+    } else {
+      endsAtRef.current = Date.now() + secondsLeft * 1000
+    }
+
+    setStatus('running')
+  }, [status, timerMode, secondsLeft])
 
   const reset = useCallback(() => {
-    clearInterval(tickRef.current)
+    clearTick()
     sessionStartRef.current = null
-    pendingZeroRef.current = false
+    endsAtRef.current = null
+    stopwatchBaseMsRef.current = 0
+    stopwatchStartedAtRef.current = null
+    handledZeroRef.current = false
     setStatus('idle')
     if (timerMode === 'stopwatch') {
       setSecondsLeft(0)
     } else {
       setSecondsLeft(DEFAULTS[phase] ?? DEFAULTS.work)
     }
-  }, [timerMode, phase])
+  }, [timerMode, phase, clearTick])
 
-  const switchTimerMode = useCallback((mode) => {
-    clearInterval(tickRef.current)
-    sessionStartRef.current = null
-    pendingZeroRef.current = false
-    setTimerMode(mode)
-    setSessionType(mode === 'stopwatch' ? 'STOPWATCH' : 'POMODORO')
-    setPhase('work')
-    setCycle(1)
-    setStatus('idle')
-    setSecondsLeft(mode === 'stopwatch' ? 0 : DEFAULTS.work)
-  }, [])
+  const switchTimerMode = useCallback(
+    (mode) => {
+      clearTick()
+      sessionStartRef.current = null
+      endsAtRef.current = null
+      stopwatchBaseMsRef.current = 0
+      stopwatchStartedAtRef.current = null
+      handledZeroRef.current = false
+      setTimerMode(mode)
+      setSessionType(mode === 'stopwatch' ? 'STOPWATCH' : 'POMODORO')
+      setPhase('work')
+      setCycle(1)
+      setStatus('idle')
+      setSecondsLeft(mode === 'stopwatch' ? 0 : DEFAULTS.work)
+    },
+    [clearTick],
+  )
 
   const switchPhase = useCallback(
     (nextPhase) => {
       if (timerMode !== 'pomodoro' || status === 'running') return
+      handledZeroRef.current = false
+      endsAtRef.current = null
       const nextCycle = nextPhase === 'work' && phase === 'longBreak' ? 1 : cycle
       applyPhase(nextPhase, nextCycle)
     },
@@ -198,12 +299,7 @@ export function useStudyTimer({ onSessionSaved, subjectIdRef }) {
   const progress =
     timerMode === 'stopwatch' || totalSeconds === 0
       ? 0
-      : ((totalSeconds - secondsLeft) / totalSeconds) * 100
-
-  const displayTime =
-    timerMode === 'stopwatch'
-      ? formatClock(secondsLeft)
-      : formatClock(secondsLeft)
+      : Math.min(100, ((totalSeconds - secondsLeft) / totalSeconds) * 100)
 
   return {
     timerMode,
@@ -213,7 +309,7 @@ export function useStudyTimer({ onSessionSaved, subjectIdRef }) {
     secondsLeft,
     status,
     progress,
-    displayTime,
+    displayTime: formatClock(secondsLeft),
     start,
     pause,
     resume,
@@ -226,7 +322,8 @@ export function useStudyTimer({ onSessionSaved, subjectIdRef }) {
 }
 
 function formatClock(seconds) {
-  const m = Math.floor(seconds / 60)
-  const s = seconds % 60
+  const safe = Math.max(0, seconds)
+  const m = Math.floor(safe / 60)
+  const s = safe % 60
   return `${m}:${String(s).padStart(2, '0')}`
 }

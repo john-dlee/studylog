@@ -111,7 +111,21 @@ public class UserControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(badRequest)))
                 .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.title").value("Conflict"));
+                .andExpect(jsonPath("$.detail").value("Email is already taken"))
+                .andExpect(jsonPath("$.title").value("Email is already taken"));
+    }
+
+    @Test
+    void shouldReturn409WhenUsernameAlreadyExists() throws Exception {
+        when(userService.register(any(RegisterRequest.class)))
+                .thenThrow(new UserAlreadyExistsException("Username is already taken"));
+
+        mockMvc.perform(post("/api/users/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(badRequest)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.detail").value("Username is already taken"))
+                .andExpect(jsonPath("$.title").value("Username is already taken"));
     }
 
     @Test
@@ -139,12 +153,13 @@ public class UserControllerTest {
         loginRequest.setPassword("wrong");
 
         when(userService.login(any(LoginRequest.class)))
-                .thenThrow(new InvalidCredentialsException("Invalid email or password"));
+                .thenThrow(new InvalidCredentialsException("Incorrect email or password"));
 
         mockMvc.perform(post("/api/users/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(loginRequest)))
                 .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.title").value("Unauthorized"));
+                .andExpect(jsonPath("$.detail").value("Incorrect email or password"))
+                .andExpect(jsonPath("$.title").value("Incorrect email or password"));
     }
 }
